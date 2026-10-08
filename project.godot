@@ -2,8 +2,11 @@ config_version=5
 
 [application]
 config/name="Warcraft: Puzzle Champions"
-run/main_scene="res://juego.tscn"
+run/main_scene="res://main_vacia.tscn"
 config/features=PackedStringArray("4.2", "Compatibility")
+
+[autoload]
+JuegoScript="*res://juego.gd"
 
 [display]
 window/size/viewport_width=1920
