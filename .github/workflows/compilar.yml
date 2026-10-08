@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Clonar el repositorio (esto descarga tu juego.cpp y el archivo .zip de Raylib)
+      # 1. Clonar el repositorio
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
 
@@ -21,18 +21,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y mingw-w64
 
-      # 3. Descomprimir el archivo ZIP local que subiste al repositorio
+      # 3. Descomprimir el archivo ZIP local
       - name: 📦 Extraer dependencias locales de Raylib
         run: |
           echo "📦 Descomprimiendo Raylib desde el repositorio local..."
           unzip -q raylib-5.0_win64_mingw-w64.zip
           mv raylib-5.0_win64_mingw-w64 raylib_lib
 
-      # 4. Compilar juego.cpp usando tu paquete local hacia Windows (.EXE)
+      # 4. Compilar inyectando las librerías de forma estática dentro del .EXE
       - name: 🔨 Compilar Ejecutable Estático (.EXE)
         run: |
           mkdir builds
-          x86_64-w64-mingw32-g++ juego.cpp -o builds/WarcraftMatch3.exe -Iraylib_lib/include -Lraylib_lib/lib -lraylib -lopengl32 -lgdi32 -lwinmm -mwindows
+          # Se agregaron -static-libgcc y -static-libstdc++ para empaquetar las DLLs faltantes dentro del ejecutable
+          x86_64-w64-mingw32-g++ juego.cpp -o builds/WarcraftMatch3.exe -Iraylib_lib/include -Lraylib_lib/lib -lraylib -lopengl32 -lgdi32 -lwinmm -static-libgcc -static-libstdc++ -mwindows
 
       # 5. Generar el Artefacto para descargar el juego listo
       - name: 📦 Guardar Juego Terminado
