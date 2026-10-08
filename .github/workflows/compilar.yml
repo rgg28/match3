@@ -22,14 +22,14 @@ jobs:
           
           # Descargar y descomprimir el motor usando TU enlace de Godot
           echo "📥 Descargando Godot Engine..."
-          curl -L -o godot.zip "https://godotengine.org"
+          curl -L -o godot.zip "https://downloads.godotengine.org/?version=4.2.1&flavor=stable&slug=linux.x86_64.zip&platform=linux.64"
           unzip -q godot.zip
           mv Godot_v4.2.1-stable_linux.x86_64 godot-engine
           chmod +x godot-engine
           
           # Descargar las plantillas usando TU enlace de los templates
           echo "📥 Descargando plantillas de exportación para Windows..."
-          curl -L -o templates.tpz "https://godotengine.org"
+          curl -L -o templates.tpz "https://downloads.godotengine.org/?version=4.2.1&flavor=stable&slug=export_templates.tpz&platform=templates"
           unzip -q templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.2.1.stable/
           
