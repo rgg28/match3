@@ -7,37 +7,40 @@ on:
 
 jobs:
   build-pc:
-    name: 🛠️ Descargar Motor y Compilar
+    name: 🛠️ Descargar Motor Oficial y Compilar
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Clonar el repositorio
+      # 1. Descargar el código de tu repositorio
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
 
-      # 2. Descargar de forma segura Godot 4.2.1 usando comandos del sistema (Inmune a fallos de librerías)
-      - name: 🤖 Descargar Godot Engine y Plantillas
+      # 2. Descargar Godot desde el enlace oficial que pasaste
+      # Se descargan los binarios y las plantillas oficiales para Windows
+      name: 🤖 Instalar Godot Engine (Versión Oficial Standard)
         run: |
           mkdir -p ~/.local/share/godot/export_templates/4.2.1.stable/
           
-          # Descargar ejecutable headless para servidores
-          wget -q https://github.com
-          unzip Godot_v4.2.1-stable_linux.x86_64.zip
+          # Descargar y descomprimir el motor de Linux que pasaste
+          echo "📥 Descargando Godot Engine..."
+          wget -q -O godot.zip "https://downloads.godotengine.org/?version=4.2.1&flavor=stable&slug=linux.x86_64.zip&platform=linux.64"
+          unzip -q godot.zip
           mv Godot_v4.2.1-stable_linux.x86_64 godot-engine
           chmod +x godot-engine
           
-          # Descargar plantillas oficiales para poder exportar a .EXE de Windows
-          wget -q https://github.com
-          unzip Godot_v4.2.1-stable_export_templates.tpz
+          # Descargar las plantillas de exportación oficiales para generar el .EXE de Windows
+          echo "📥 Descargando plantillas de exportación para Windows..."
+          wget -q -O templates.tpz "https://godotengine.org"
+          unzip -q templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.2.1.stable/
 
-      # 3. Compilar el juego usando la terminal nativa del motor
+      # 3. Compilar el juego usando la consola interna de Godot
       - name: ⚙️ Compilar a Windows Desktop (.EXE)
         run: |
           mkdir -p builds
           ./godot-engine --headless --export-release "Windows Desktop" builds/WarcraftMatch3.exe
 
-      # 4. Guardar el archivo final listo para jugar
+      # 4. Guardar el archivo final .exe para que lo descargues
       - name: 📦 Guardar Juego Terminado
         uses: actions/upload-artifact@v4
         with:
