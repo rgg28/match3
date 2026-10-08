@@ -1,4 +1,5 @@
 name: "💻 Generar Ejecutable WoW Match-3"
+
 on:
   push:
     branches: [ main ]
@@ -6,21 +7,26 @@ on:
 
 jobs:
   build-pc:
+    name: 🛠️ Compilar Ejecutables de PC
     runs-on: ubuntu-latest
+
     steps:
+      # 1. Descargar el código de tu repositorio
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
 
-      - name: 🤖 Instalar Godot y Compilar
-        uses: firebelley/godot-export@v5.2.0
+      # 2. Compilar usando la acción oficial y estable de GitHub
+      - name: 🤖 Instalar Godot y Compilar para PC
+        uses: chickenandpork/godot-export@v1
         with:
-          godot_executable_download_url: https://tuxfamily.org
-          godot_export_templates_download_url: https://tuxfamily.org
-          relative_project_path: ./
-          archive_output: true
+          godot-version: '4.2.1'
+          relative-project-path: './'
+          # Esto le dice que use la configuración que pusimos en export_presets.cfg
+          export-preset: 'Windows Desktop' 
 
+      # 3. Guardar el archivo .exe listo para descargar
       - name: 📦 Guardar Juego Terminado
         uses: actions/upload-artifact@v4
         with:
           name: Warcraft_Match3_PC
-          path: /home/runner/.local/share/godot/builds/
+          path: builds/
