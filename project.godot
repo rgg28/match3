@@ -2,10 +2,14 @@ config_version=5
 
 [application]
 config/name="Warcraft: Puzzle Champions"
-run/main_scene="res://juego.gd"
-config/features=PackedStringArray("4.2", "Forward Plus")
+run/main_scene="res://juego.tscn"
+config/features=PackedStringArray("4.2", "Compatibility")
 
 [display]
 window/size/viewport_width=1920
 window/size/viewport_height=1080
 window/size/resizable=false
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
