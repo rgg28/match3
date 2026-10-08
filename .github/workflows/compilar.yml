@@ -7,24 +7,37 @@ on:
 
 jobs:
   build-pc:
-    name: 🛠️ Compilar Ejecutables de PC
+    name: 🛠️ Descargar Motor y Compilar
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Descargar el código de tu repositorio
+      # 1. Clonar el repositorio
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
 
-      # 2. Compilar usando la acción oficial y estable de GitHub
-      - name: 🤖 Instalar Godot y Compilar para PC
-        uses: chickenandpork/godot-export@v1
-        with:
-          godot-version: '4.2.1'
-          relative-project-path: './'
-          # Esto le dice que use la configuración que pusimos en export_presets.cfg
-          export-preset: 'Windows Desktop' 
+      # 2. Descargar de forma segura Godot 4.2.1 usando comandos del sistema (Inmune a fallos de librerías)
+      - name: 🤖 Descargar Godot Engine y Plantillas
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates/4.2.1.stable/
+          
+          # Descargar ejecutable headless para servidores
+          wget -q https://github.com
+          unzip Godot_v4.2.1-stable_linux.x86_64.zip
+          mv Godot_v4.2.1-stable_linux.x86_64 godot-engine
+          chmod +x godot-engine
+          
+          # Descargar plantillas oficiales para poder exportar a .EXE de Windows
+          wget -q https://github.com
+          unzip Godot_v4.2.1-stable_export_templates.tpz
+          mv templates/* ~/.local/share/godot/export_templates/4.2.1.stable/
 
-      # 3. Guardar el archivo .exe listo para descargar
+      # 3. Compilar el juego usando la terminal nativa del motor
+      - name: ⚙️ Compilar a Windows Desktop (.EXE)
+        run: |
+          mkdir -p builds
+          ./godot-engine --headless --export-release "Windows Desktop" builds/WarcraftMatch3.exe
+
+      # 4. Guardar el archivo final listo para jugar
       - name: 📦 Guardar Juego Terminado
         uses: actions/upload-artifact@v4
         with:
