@@ -1,0 +1,43 @@
+name: "💻 Generar Ejecutable Raylib C++ WoW Match-3"
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-pc:
+    name: 🛠️ Compilar Raylib Nativo (C++)
+    runs-on: windows-latest
+
+    steps:
+      # 1. Clonar el repositorio con tu archivo juego.cpp
+      - name: 📥 Clonar repositorio
+        uses: actions/checkout@v4
+
+      # 2. Instalar el compilador MinGW GCC de 64 bits
+      - name: ⚙️ Configurar Compilador C++ (MinGW)
+        uses: egor-tisin/setup-mingw@v2
+        with:
+          platform: x64
+
+      # 3. Descargar el framework puro de desarrollo de Raylib 5.0 para MinGW
+      - name: 📥 Descargar Librerías Oficiales de Raylib
+        run: |
+          curl -L -o raylib.zip "https://github.com"
+          tar -xf raylib.zip
+          mv raylib-5.0_win64_mingw-w64 raylib_lib
+
+      # 4. Compilar vinculando las API multimedia de Windows de manera estática
+      - name: 🔨 Compilar Ejecutable (.EXE)
+        run: |
+          mkdir builds
+          g++ juego.cpp -o builds/WarcraftMatch3.exe -Iraylib_lib/include -Lraylib_lib/lib -lraylib -lopengl32 -lgdi32 -lwinmm -mwindows
+
+      # 5. Generar el Artefacto final para descargar de inmediato
+      - name: 📦 Guardar Juego Terminado
+        uses: actions/upload-artifact@v4
+        with:
+          name: Warcraft_Match3_Raylib_Nativo
+          path: builds/WarcraftMatch3.exe
+          if-no-files-found: error
