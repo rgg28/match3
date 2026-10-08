@@ -20,18 +20,21 @@ jobs:
         run: |
           mkdir -p ~/.local/share/godot/export_templates/4.2.1.stable/
           
-          # Descargar y descomprimir el motor de Linux oficial
+          # Descargar y descomprimir el motor de Linux oficial usando tu enlace directo
           echo "📥 Descargando Godot Engine..."
-          wget -q https://godotengine.org
-          unzip -q Godot_v4.2.1-stable_linux.x86_64.zip
+          curl -L -o godot.zip "https://downloads.godotengine.org/?version=4.2.1&flavor=stable&slug=linux.x86_64.zip&platform=linux.64"
+          unzip -q godot.zip
           mv Godot_v4.2.1-stable_linux.x86_64 godot-engine
           chmod +x godot-engine
           
           # Descargar las plantillas de exportación oficiales para generar el .EXE de Windows
           echo "📥 Descargando plantillas de exportación para Windows..."
-          wget -q https://godotengine.org
-          unzip -q Godot_v4.2.1-stable_export_templates.tpz
+          curl -L -o templates.tpz https://github.com
+          unzip -q templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.2.1.stable/
+          
+          # Limpiar archivos comprimidos para liberar espacio
+          rm godot.zip templates.tpz
 
       # 3. Compilar el juego usando la consola interna de Godot
       - name: ⚙️ Compilar a Windows Desktop (.EXE)
