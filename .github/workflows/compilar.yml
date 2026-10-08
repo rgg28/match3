@@ -15,23 +15,22 @@ jobs:
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
 
-      # 2. Descargar Godot desde el enlace oficial que pasaste
-      # Se descargan los binarios y las plantillas oficiales para Windows
-      name: 🤖 Instalar Godot Engine (Versión Oficial Standard)
+      # 2. Descargar Godot Engine y plantillas de exportación
+      - name: 🤖 Instalar Godot Engine (Versión Oficial Standard)
         run: |
           mkdir -p ~/.local/share/godot/export_templates/4.2.1.stable/
           
-          # Descargar y descomprimir el motor de Linux que pasaste
+          # Descargar y descomprimir el motor de Linux oficial
           echo "📥 Descargando Godot Engine..."
-          wget -q -O godot.zip "https://downloads.godotengine.org/?version=4.2.1&flavor=stable&slug=linux.x86_64.zip&platform=linux.64"
-          unzip -q godot.zip
+          wget -q https://godotengine.org
+          unzip -q Godot_v4.2.1-stable_linux.x86_64.zip
           mv Godot_v4.2.1-stable_linux.x86_64 godot-engine
           chmod +x godot-engine
           
           # Descargar las plantillas de exportación oficiales para generar el .EXE de Windows
           echo "📥 Descargando plantillas de exportación para Windows..."
-          wget -q -O templates.tpz "https://godotengine.org"
-          unzip -q templates.tpz
+          wget -q https://godotengine.org
+          unzip -q Godot_v4.2.1-stable_export_templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.2.1.stable/
 
       # 3. Compilar el juego usando la consola interna de Godot
