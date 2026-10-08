@@ -4,192 +4,242 @@
 #include <string>
 #include <cstdlib>
 #include <ctime>
+#include <cmath>
 
 // --- Configuración de Red ---
-const int PUERTO = 4242;
-enum EstadoRed { MENU, HOST_ESPERANDO, CONECTADO_CLIENTE, CONECTADO_HOST };
+enum EstadoRed { MENU, HOST_ESPERANDO, CONECTADO };
 EstadoRed estadoActual = MENU;
-
-// --- Datos del Jugador ---
-std::string mi_clase = "Mago";
-int mi_nivel = 1;
-int mi_vida = 100;
-int rival_vida = 100;
 std::string texto_estado = "Warcraft Match-3 RPG - Menu Principal";
 
-// --- Estructuras de Interfaz ---
-char ip_rival[16] = "\0";
-int letras_ip = 0;
-bool caja_ip_activa = false;
+// --- Datos del Juego RPG ---
+int mi_vida = 100;
+int rival_vida = 100;
 
-struct Gema {
-    std::string tipo;
-    Rectangle rect;
-};
-std::vector<Gema> tablero;
+// --- Configuración e Interfaz del Tablero ---
+const int FILAS = 6;
+const int COLUMNAS = 6;
+const int TAM_CASILLA = 70;
+const int ESPACIO = 8;
+const int ORIGEN_X = 650;
+const int ORIGEN_Y = 250;
 
-// --- Funciones del Ciclo de Vida ---
-void CrearServidor() {
-    texto_estado = "Esperando que el rival se conecte a tu IP (Puerto 4242)...";
-    estadoActual = HOST_ESPERANDO;
-    std::cout << "☁️ Servidor iniciado localmente. Simulando escucha ENet..." << std::endl;
-}
+// Tipos de gemas: 0=Ira(Rojo), 1=Mana(Azul), 2=Calavera(Purpura), 3=Oro(Amarillo), 4=Vida(Verde)
+enum TipoGema { IRA, MANA, CALAVERA, ORO, VIDA, VACIO };
+int matriz[FILAS][COLUMNAS];
 
-void UnirseAPartida() {
-    std::string ip_destino = (letras_ip > 0) ? ip_rival : "127.0.0.1";
-    texto_estado = "Intentando conectar con " + ip_destino + "...";
-    estadoActual = CONECTADO_CLIENTE;
-    std::cout << "⚔️ Conectado al rival en: " << ip_destino << std::endl;
-}
+// Control de Selección para Intercambio
+int celdaSeleccionadaFila = -1;
+int celdaSeleccionadaCol = -1;
 
-void CargarProgresoNube() {
-    std::cout << "☁️ Conectando con la base de datos externa en la nube..." << std::endl;
-    std::cout << "📥 Datos recuperados: " << mi_clase << " Nivel " << mi_nivel << std::endl;
-}
+// --- Funciones del Flujo del Match-3 ---
 
-void GuardarProgresoNube() {
-    std::cout << "☁️ Enviando progreso en segundo plano... ¡Tu personaje esta a salvo!" << std::endl;
-}
-
-void GenerarTableroCombate() {
-    tablero.clear();
-    std::string tipos_gemas[] = {"IRA", "MANA", "CALAVERA", "ORO", "VIDA"};
-    int ancho_casilla = 80;
-    int alto_casilla = 80;
-    int inicio_x = 650;
-    int inicio_y = 300;
-
-    for (int i = 0; i < 36; i++) {
-        int fila = i / 6;
-        int col = i % 6;
-        Gema g;
-        g.tipo = tipos_gemas[rand() % 5];
-        g.rect = { (float)(inicio_x + col * (ancho_casilla + 10)), (float)(inicio_y + fila * (alto_casilla + 10)), (float)ancho_casilla, (float)alto_casilla };
-        tablero.push_back(g);
+void GenerarTableroInicial() {
+    for (int f = 0; f < FILAS; f++) {
+        for (int c = 0; c < COLUMNAS; c++) {
+            do {
+                matriz[f][c] = rand() % 5;
+            } while ((c >= 2 && matriz[f][c] == matriz[f][c-1] && matriz[f][c] == matriz[f][c-2]) ||
+                     (f >= 2 && matriz[f][c] == matriz[f-1][c] && matriz[f][c] == matriz[f-2][c]));
+        }
     }
-    CargarProgresoNube();
 }
 
-void ProcesarJugada(std::string tipo) {
-    if (tipo == "CALAVERA") {
-        texto_estado = "¡Lanzaste un ataque! El rival pierde vida.";
-        rival_vida -= 15;
-        GuardarProgresoNube();
+bool VerificarYEliminarCombinaciones() {
+    bool hubo_combinacion = false;
+    bool eliminar[FILAS][COLUMNAS] = { false };
+
+    // Validar líneas horizontales
+    for (int f = 0; f < FILAS; f++) {
+        for (int c = 0; c < COLUMNAS - 2; c++) {
+            if (matriz[f][c] != VACIO && matriz[f][c] == matriz[f][c+1] && matriz[f][c] == matriz[f][c+2]) {
+                eliminar[f][c] = eliminar[f][c+1] = eliminar[f][c+2] = true;
+                hubo_combinacion = true;
+            }
+        }
+    }
+
+    // Validar líneas verticales
+    for (int c = 0; c < COLUMNAS; c++) {
+        for (int f = 0; f < FILAS - 2; f++) {
+            if (matriz[f][c] != VACIO && matriz[f][c] == matriz[f+1][c] && matriz[f][c] == matriz[f+2][c]) {
+                eliminar[f][c] = eliminar[f+1][c] = eliminar[f+2][c] = true;
+                hubo_combinacion = true;
+            }
+        }
+    }
+
+    // Procesar efectos RPG si se destruyen calaveras
+    for (int f = 0; f < FILAS; f++) {
+        for (int c = 0; c < COLUMNAS; c++) {
+            if (eliminar[f][c]) {
+                if (matriz[f][c] == CALAVERA) {
+                    rival_vida -= 5;
+                    texto_estado = "¡Lanzaste un ataque! El rival pierde vida.";
+                }
+                matriz[f][c] = VACIO;
+            }
+        }
+    }
+
+    return hubo_combinacion;
+}
+
+void AplicarGravedadYCompletar() {
+    // Caída de gemas existentes
+    for (int c = 0; c < COLUMNAS; c++) {
+        for (int f = FILAS - 1; f >= 0; f--) {
+            if (matriz[f][c] == VACIO) {
+                for (int k = f - 1; k >= 0; k--) {
+                    if (matriz[k][c] != VACIO) {
+                        matriz[f][c] = matriz[k][c];
+                        matriz[k][c] = VACIO;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    // Rellenar huecos superiores con nuevas gemas
+    for (int f = 0; f < FILAS; f++) {
+        for (int c = 0; c < COLUMNAS; c++) {
+            if (matriz[f][c] == VACIO) {
+                matriz[f][c] = rand() % 5;
+            }
+        }
+    }
+}
+
+void IntercambiarGemas(int f1, int c1, int f2, int c2) {
+    int temp = matriz[f1][c1];
+    matriz[f1][c1] = matriz[f2][c2];
+    matriz[f2][c2] = temp;
+
+    // Si el intercambio no produce un Match-3, se deshace el movimiento
+    if (!VerificarYEliminarCombinaciones()) {
+        int temp2 = matriz[f1][c1];
+        matriz[f1][c1] = matriz[f2][c2];
+        matriz[f2][c2] = temp2;
+        texto_estado = "Movimiento invalido. No genera Match-3.";
     } else {
-        texto_estado = "Combinaste gemas de tipo: " + tipo;
+        // Ciclo automático para combos encadenados por gravedad
+        do {
+            AplicarGravedadYCompletar();
+        } while (VerificarYEliminarCombinaciones());
     }
 }
 
 int main() {
     srand(time(0));
-    InitWindow(1920, 1080, "Warcraft: Puzzle Champions (Raylib Nativo)");
+    InitWindow(1920, 1080, "Warcraft: Puzzle Champions");
     SetTargetFPS(60);
 
-    // Definición de Botones del Menú Inicial
-    Rectangle btnHostRect = { 50, 200, 250, 50 };
-    Rectangle btnUnirseRect = { 320, 200, 250, 50 };
-    Rectangle txtBoxIPRect = { 50, 120, 520, 50 };
+    Rectangle btnHostRect = { 50, 150, 250, 50 };
+    Rectangle btnUnirseRect = { 320, 150, 250, 50 };
+
+    GenerarTableroInicial();
 
     while (!WindowShouldClose()) {
         Vector2 mousePos = GetMousePosition();
 
-        // --- Actualizar Lógica de Entradas ---
+        // --- Manejo del Menú de Red ---
         if (estadoActual == MENU) {
-            if (CheckCollisionPointRec(mousePos, txtBoxIPRect)) {
-                if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) caja_ip_activa = true;
-            } else {
-                if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) caja_ip_activa = false;
-            }
-
-            if (caja_ip_activa) {
-                int key = GetCharPressed();
-                while (key > 0) {
-                    if ((key >= '0' && key <= '9') || key == '.') {
-                        if (letras_ip < 15) {
-                            ip_rival[letras_ip] = (char)key;
-                            letras_ip++;
-                            ip_rival[letras_ip] = '\0';
-                        }
-                    }
-                    key = GetCharPressed();
-                }
-                if (IsKeyPressed(KEY_BACKSPACE)) {
-                    letras_ip--;
-                    if (letras_ip < 0) letras_ip = 0;
-                    ip_rival[letras_ip] = '\0';
-                }
-            }
-
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                if (CheckCollisionPointRec(mousePos, btnHostRect)) CrearServidor();
+                if (CheckCollisionPointRec(mousePos, btnHostRect)) {
+                    estadoActual = HOST_ESPERANDO;
+                    texto_estado = "Esperando rival... Presiona [ENTER] para simular conexion.";
+                }
                 if (CheckCollisionPointRec(mousePos, btnUnirseRect)) {
-                    UnirseAPartida();
-                    GenerarTableroCombate();
+                    estadoActual = CONECTADO;
+                    texto_estado = "⚔️ ¡Conectado! Intercambia gemas adyacentes clicando una y luego otra.";
                 }
             }
         }
         else if (estadoActual == HOST_ESPERANDO) {
-            // Simulación: Presiona la tecla ENTER para simular la llegada de un rival por red
             if (IsKeyPressed(KEY_ENTER)) {
-                estadoActual = CONECTADO_HOST;
-                texto_estado = "⚔️ ¡Rival Conectado! Empieza la batalla Match-3 ⚔️";
-                GenerarTableroCombate();
+                estadoActual = CONECTADO;
+                texto_estado = "⚔️ ¡Rival Conectado! Encuentra combinaciones de 3.";
             }
         }
-        else if (estadoActual == CONECTADO_CLIENTE || estadoActual == CONECTADO_HOST) {
+        // --- Manejo de la Lógica del Match-3 Real ---
+        else if (estadoActual == CONECTADO) {
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                for (int i = 0; i < 36; i++) {
-                    if (CheckCollisionPointRec(mousePos, tablero[i].rect)) {
-                        ProcesarJugada(tablero[i].tipo);
-                        tablero[i].tipo = "USADA"; // Desactivar visualmente
+                for (int f = 0; f < FILAS; f++) {
+                    for (int c = 0; c < COLUMNAS; c++) {
+                        Rectangle celdaRect = { 
+                            (float)(ORIGEN_X + c * (TAM_CASILLA + ESPACIO)), 
+                            (float)(ORIGEN_Y + f * (TAM_CASILLA + ESPACIO)), 
+                            (float)TAM_CASILLA, (float)TAM_CASILLA 
+                        };
+
+                        if (CheckCollisionPointRec(mousePos, celdaRect)) {
+                            if (celdaSeleccionadaFila == -1) {
+                                // Primer clic: Seleccionar gema
+                                celdaSeleccionadaFila = f;
+                                celdaSeleccionadaCol = c;
+                            } else {
+                                // Segundo clic: Comprobar si es vecina inmediata
+                                int diffFila = abs(f - celdaSeleccionadaFila);
+                                int diffCol = abs(c - celdaSeleccionadaCol);
+
+                                if ((diffFila == 1 && diffCol == 0) || (diffFila == 0 && diffCol == 1)) {
+                                    IntercambiarGemas(celdaSeleccionadaFila, celdaSeleccionadaCol, f, c);
+                                }
+                                // Resetear selección
+                                celdaSeleccionadaFila = -1;
+                                celdaSeleccionadaCol = -1;
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // --- Renderizado en Pantalla ---
+        // --- Renderizado Gráfico ---
         BeginDrawing();
         ClearBackground(DARKGRAY);
 
-        // Cabecera común
-        DrawText(texto_estado.c_str(), 50, 40, 30, RAYWHITE);
+        DrawText(texto_estado.c_str(), 50, 40, 26, RAYWHITE);
 
         if (estadoActual == MENU) {
-            // Renderizar Caja de Entrada de IP
-            DrawRectangleRec(txtBoxIPRect, caja_ip_activa ? LIGHTGRAY : WHITE);
-            DrawRectangleLines((int)txtBoxIPRect.x, (int)txtBoxIPRect.y, (int)txtBoxIPRect.width, (int)txtBoxIPRect.height, BLACK);
-            if (letras_ip > 0) DrawText(ip_rival, 65, 130, 30, BLACK);
-            else DrawText("Escribe la IP del rival aqui (Default: 127.0.0.1)...", 65, 130, 24, GRAY);
-
-            // Renderizar Botones
             DrawRectangleRec(btnHostRect, MAROON);
-            DrawText("Crear Partida (Host)", 70, 215, 20, WHITE);
+            DrawText("Crear Partida (Host)", 70, 165, 20, WHITE);
 
             DrawRectangleRec(btnUnirseRect, BLUE);
-            DrawText("Conectarse al Rival", 350, 215, 20, WHITE);
+            DrawText("Conectarse al Rival", 350, 165, 20, WHITE);
         }
         else if (estadoActual == HOST_ESPERANDO) {
-            DrawText("PRESIONA [ENTER] PARA SIMULAR CONEXION DEL RIVAL", 50, 150, 20, GOLD);
+            DrawText("PRESIONA EL BOTON [ENTER] PARA SIMULAR JUGADOR", 50, 150, 20, GOLD);
         }
-        else if (estadoActual == CONECTADO_CLIENTE || estadoActual == CONECTADO_HOST) {
-            // Dibujar Datos Estadísticos de los Jugadores
+        else if (estadoActual == CONECTADO) {
             DrawText(("Tu Vida: " + std::to_string(mi_vida)).c_str(), 50, 120, 24, GREEN);
             DrawText(("Vida Rival: " + std::to_string(rival_vida)).c_str(), 50, 160, 24, RED);
 
-            // Dibujar el Tablero Interactivo 6x6
-            for (int i = 0; i < 36; i++) {
-                if (tablero[i].tipo == "USADA") {
-                    DrawRectangleRec(tablero[i].rect, BLACK);
-                } else {
-                    Color colorGema = ORANGE;
-                    if (tablero[i].tipo == "IRA") colorGema = RED;
-                    else if (tablero[i].tipo == "MANA") colorGema = BLUE;
-                    else if (tablero[i].tipo == "CALAVERA") colorGema = PURPLE;
-                    else if (tablero[i].tipo == "VIDA") colorGema = GREEN;
+            // Dibujar el Tablero de Match-3
+            for (int f = 0; f < FILAS; f++) {
+                for (int c = 0; c < COLUMNAS; c++) {
+                    int tipo = matriz[f][c];
+                    Color colorGema = BLACK;
 
-                    DrawRectangleRec(tablero[i].rect, colorGema);
-                    DrawRectangleLines((int)tablero[i].rect.x, (int)tablero[i].rect.y, (int)tablero[i].rect.width, (int)tablero[i].rect.height, WHITE);
-                    DrawText(tablero[i].tipo.substr(0, 4).c_str(), (int)tablero[i].rect.x + 10, (int)tablero[i].rect.y + 30, 14, BLACK);
+                    if (tipo == IRA) colorGema = RED;
+                    else if (tipo == MANA) colorGema = BLUE;
+                    else if (tipo == CALAVERA) colorGema = PURPLE;
+                    else if (tipo == ORO) colorGema = YELLOW;
+                    else if (tipo == VIDA) colorGema = GREEN;
+
+                    int x = ORIGEN_X + c * (TAM_CASILLA + ESPACIO);
+                    int y = ORIGEN_Y + f * (TAM_CASILLA + ESPACIO);
+
+                    // Si está seleccionada temporalmente, dibujarla con un borde brillante
+                    if (f == celdaSeleccionadaFila && c == celdaSeleccionadaCol) {
+                        DrawRectangle(x - 4, y - 4, TAM_CASILLA + 8, TAM_CASILLA + 8, GOLD);
+                    }
+
+                    DrawRectangle(x, y, TAM_CASILLA, TAM_CASILLA, colorGema);
+                    DrawRectangleLines(x, y, TAM_CASILLA, TAM_CASILLA, WHITE);
+
+                    // Nombre abreviado de la gema en el centro
+                    std::string textoGema = (tipo == IRA) ? "IRA" : (tipo == MANA) ? "MANA" : (tipo == CALAVERA) ? "SKULL" : (tipo == ORO) ? "ORO" : "VIDA";
+                    DrawText(textoGema.c_str(), x + 12, y + 26, 14, (tipo == ORO) ? BLACK : WHITE);
                 }
             }
         }
